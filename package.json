@@ -1,7 +1,7 @@
 {
   "name": "sticky-note",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "start": "node server",
     "dev": "nodemon server"
@@ -9,11 +9,15 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "This is a simple sticky note application that allows users to create, update, and delete sticky notes. The application uses Express.js for the backend and stores the notes in memory. It provides a RESTful API for managing the notes.",
   "devDependencies": {
     "nodemon": "^3.1.10"
   },
   "dependencies": {
-    "express": "^5.1.0"
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
+    "express": "^5.1.0",
+    "uuid": "^11.1.0"
   }
 }
