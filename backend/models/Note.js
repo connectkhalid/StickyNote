@@ -17,16 +17,8 @@ const noteSchema = new mongoose.Schema(
                   required : true
                   },
             isCompleted: {
-                  type: String,
-                  default : false
-                  },
-            roles: [{
-                  type: String,
-                  default : "Employee",
-                  }],
-            isActive: {
                   type: Boolean,
-                  default : true
+                  default : false
                   }
       },
       {

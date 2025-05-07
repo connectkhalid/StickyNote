@@ -2,7 +2,8 @@ const user = require("../models/User");
 const note = require("../models/Note");
 const asyncHandler = require("express-async-handler"); // Middleware for handling async errors
 const bcrypt = require("bcrypt"); // For hashing passwords
-const { get } = require("mongoose");
+const mongoose = require("mongoose");
+const { isValidId } = require("../middleware/idValidator");
 
 // @desc Get all users
 // @route GET /users
@@ -22,13 +23,7 @@ const createNewUser = asyncHandler(async (req, res) => {
   const { firstName, lastName, username, password, roles } = req.body;
 
   // Check if all required fields are provided
-  if (
-    !firstName ||
-    !username ||
-    !password ||
-    !Array.isArray(roles) ||
-    !roles.length
-  ) {
+  if (!firstName || !password || !Array.isArray(roles) || !roles.length) {
     return res.status(400).json({ message: "Invalid user data" });
   }
 
@@ -64,9 +59,9 @@ const createNewUser = asyncHandler(async (req, res) => {
 // @access Private
 const getUserDetails = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  // Check if ID is provided
-  if (!id) {
-    return res.status(400).json({ message: "User ID required" });
+  //validate userId
+  if (!isValidId(id)) {
+    res.status(400).json({ message: `User id ${id} is not valid` });
   }
 
   // Fetch user details from database
@@ -81,79 +76,90 @@ const getUserDetails = asyncHandler(async (req, res) => {
 // @route PATCH /users
 // @access Private
 const updateUser = asyncHandler(async (req, res) => {
-      const { id, firstName, lastName, username, password, roles, isActive } =
-        req.body;
-      // Check if all required fields are provided
-      if (
-        !id ||
-        !firstName ||
-        !username ||
-        !Array.isArray(roles) ||
-        !roles.length ||
-        typeof isActive !== "boolean"
-      ) {
-        return res.status(400).json({ message: "Invalid user data" });
-      }
+  const { id, firstName, lastName, username, password, roles, isActive } =
+    req.body;
 
-      // Check if username already exists
-      const duplicateUsername = await user.findone({ username }).lean().exec();
-      if(duplicateUsername){
-            return res.status(409).json({ message: "Username already exists" });
-      }
+  // Check if all required fields are provided
+  if (
+    !id ||
+    !firstName ||
+    !Array.isArray(roles) ||
+    !roles.length ||
+    typeof isActive !== "boolean"
+  ) {
+    return res.status(400).json({ message: "Invalid user data" });
+  }
+  //validate userId
+  if (!isValidId(id)) {
+    res.status(400).json({ message: `User id ${id} is not valid` });
+  }
 
-      // Hash password if provided
-      const hashedPassword = await bcrypt.hash(password, 10);
+  // Check if username already exists
+  const duplicateUsername = await user.findOne({ username }).lean().exec();
+  if (duplicateUsername && duplicateUsername.id == id) {
+    return res
+      .status(409)
+      .json({ message: "Username already exists with another user." });
+  }
 
-      // Create user object to update
-      const userObject = {
-        firstName,
-        lastName,
-        username,
-        password: hashedPassword,
-        roles,
-        isActive,
-      };
+  // Hash password if provided
+  const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Fetch user and Update user in database
-      const updatedUser = await user.findByIdAndUpdate(id, userObject, {
-        new: true,
-      });
-      if (updatedUser) {
-        res.status(200).json({ message: `${updatedUser.username} updated` });
-      } else {
-        res.status(400).json({ message: "Invalid user data received" });
-      }
+  // Create user object to update
+  const userObject = {
+    firstName,
+    lastName,
+    username,
+    password: hashedPassword,
+    roles,
+    isActive,
+  };
 
+  // Fetch user and Update user in database
+  const updatedUser = await user.findByIdAndUpdate(id, userObject, {
+    new: true,
+  });
+  if (updatedUser) {
+    res.status(200).json({ message: `${updatedUser.username} updated` });
+  } else {
+    res.status(400).json({ message: "Invalid user data received" });
+  }
 });
 
 // @desc Delete user
 // @route DELETE /users
 // @access Private
 const deleteUser = asyncHandler(async (req, res) => {
-      const { id } = req.body;
-      // Check if ID is provided
-      if (!id) {
-      return res.status(400).json({ message: "User ID required" });
-      }
-      
-      // Check if user exists
-      const userToDelete = await user.findById(id).exec();
-      if (!userToDelete) {
-      return res.status(400).json({ message: "User not found" });
-      }
-      
-      // Check if user has notes
-      const noteToDelete = await note.findOne({ user: id }).lean().exec();
-      if (noteToDelete) {
-      return res.status(400).json({
-            message: "User has assigned notes. Please delete them first.",
-      });
-      }
-      
-      // Delete user from database
-      const result = await user.deleteOne({ _id: id });
-      const reply = `Username ${result.username} with ID ${result._id} deleted`;
-      res.status(200).json(reply);
+  const { id } = req.body;
+  // Check if ID is provided
+  // if (!id || !mongoose.isValidObjectId(id)) {
+  //   return res.status(400).json({ message: "Invalid User Id!" });
+  // }
+  //validate userId
+  if (!isValidId(id)) {
+    res.status(400).json({ message: `User id ${id} is not valid` });
+  }
+
+  // Check if user exists
+  const userToDelete = await user.findById(id).exec();
+  if (!userToDelete) {
+    return res.status(400).json({ message: "User not found" });
+  }
+
+  // Check if user has notes
+  const noteToDelete = await note.findOne({ user: id }).lean().exec();
+  if (noteToDelete) {
+    return res.status(400).json({
+      message: "User has assigned notes. Please delete them first.",
+    });
+  }
+
+  // Delete user from database
+  const result = await user.deleteOne({ _id: id });
+  console.log(result);
+  console.log(userToDelete.username);
+  const reply = `Username ${userToDelete.username} with ID ${id} deleted`;
+  res.status(200).json(reply);
 });
 
 module.exports = {
